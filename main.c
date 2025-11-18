@@ -32,8 +32,7 @@ XGpio ls1_gpio;
 // ---------------------------------------------------------------------------
 // SIMPLE, RELIABLE MICROBLAZE DELAY (no OS timer needed)
 // ---------------------------------------------------------------------------
-void busy_wait_ms(int ms)
-{
+void busy_wait_ms(int ms) {
     for (volatile int i = 0; i < ms * 90000; i++)
         asm("nop");
 }
@@ -41,38 +40,32 @@ void busy_wait_ms(int ms)
 // ---------------------------------------------------------------------------
 // Motor direction helper functions
 // ---------------------------------------------------------------------------
-void motor_forward()
-{
+void motor_forward() {
     DHB1_DIR_M1 = 1;
     DHB1_DIR_M2 = 1;
 }
 
-void motor_backward()
-{
+void motor_backward() {
     DHB1_DIR_M1 = 0;
     DHB1_DIR_M2 = 0;
 }
 
-void motor_left()
-{
+void motor_left() {
     DHB1_DIR_M1 = 0;
     DHB1_DIR_M2 = 1;
 }
 
-void motor_right()
-{
+void motor_right() {
     DHB1_DIR_M1 = 1;
     DHB1_DIR_M2 = 0;
 }
 
-void motor_enable()
-{
-    DHB1_EN_M1 = 0;
+void motor_enable() {
+    DHB1_EN_M1 = 1;
     DHB1_EN_M2 = 1;
 }
 
-void motor_disable()
-{
+void motor_disable() {
     DHB1_EN_M1 = 0;
     DHB1_EN_M2 = 0;
 }
@@ -80,41 +73,29 @@ void motor_disable()
 // ---------------------------------------------------------------------------
 // Stop motors (PWM + enable)
 // ---------------------------------------------------------------------------
-void motor_stop()
-{
+void motor_stop() {
     DHB1_PWM_M1 = 0;
     DHB1_PWM_M2 = 0;
-
-    // disable outputs
+    DHB1_PWM_EN = 0;
     motor_disable();
 }
 
 // ---------------------------------------------------------------------------
 // Set motor speed using PWM
 // duty = 0–65535 range typically
+// FIXED: No longer turns off motors immediately
 // ---------------------------------------------------------------------------
-void motor_set_speed(int duty)
-{
+void motor_set_speed(int duty) {
     DHB1_PWM_M1 = duty;
     DHB1_PWM_M2 = duty;
     DHB1_PWM_EN = 1;
-
     motor_enable();
-
-    busy_wait_ms(100);
-
-    DHB1_PWM_M1 = 0;
-    DHB1_PWM_M2 = 0;
-    DHB1_PWM_EN = 0;
-
-    motor_disable();
 }
 
 // ---------------------------------------------------------------------------
 // EASY MOTOR PULSE: turn on → wait → turn off
 // ---------------------------------------------------------------------------
-void motor_pulse_forward(int duty, int duration_ms)
-{
+void motor_pulse_forward(int duty, int duration_ms) {
     motor_forward();
     motor_set_speed(duty);
     busy_wait_ms(duration_ms);
@@ -124,22 +105,21 @@ void motor_pulse_forward(int duty, int duration_ms)
 // ---------------------------------------------------------------------------
 // MAIN PROGRAM
 // ---------------------------------------------------------------------------
-int main()
-{
+int main() {
     xil_printf("ArtyBot starting...\n");
 
     // -------------------------------------------------------------
     // Initialize LS1 GPIO (using base address directly)
     // -------------------------------------------------------------
     XGpio_Initialize(&ls1_gpio, LS1_BASEADDR);
-    XGpio_SetDataDirection(&ls1_gpio, 1, 0xFF); // inputs
+    XGpio_SetDataDirection(&ls1_gpio, 1, 0xFF);  // inputs
     xil_printf("LS1 initialized.\n");
 
     // -------------------------------------------------------------
     // MOTOR TESTS
     // -------------------------------------------------------------
     xil_printf("Pulse forward...\n");
-    motor_pulse_forward(40000, 500);   // 0.5 seconds
+    motor_pulse_forward(40000, 500);  // 0.5 seconds
 
     xil_printf("Pulse backward...\n");
     motor_backward();
@@ -164,30 +144,21 @@ int main()
     // -------------------------------------------------------------
     // BASIC LINE-FOLLOWING LOOP
     // -------------------------------------------------------------
-    while (1)
-    {
+    while (1) {
         u32 ls = XGpio_DiscreteRead(&ls1_gpio, 1);
-
-        int left  = (ls & 0x01);
+        int left = (ls & 0x01);
         int right = (ls & 0x02);
 
-        if (left && right)
-        {
+        if (left && right) {
             motor_forward();
             motor_set_speed(35000);
-        }
-        else if (left)
-        {
+        } else if (left) {
             motor_left();
             motor_set_speed(30000);
-        }
-        else if (right)
-        {
+        } else if (right) {
             motor_right();
             motor_set_speed(30000);
-        }
-        else
-        {
+        } else {
             motor_stop();
         }
 
