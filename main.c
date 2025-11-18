@@ -6,6 +6,10 @@
 // ---------------------------------------------------------------------------
 // BASE ADDRESSES — FROM YOUR VIVADO PROJECT
 // ---------------------------------------------------------------------------
+#define AXI_GPIO_1_BASE_ADDR 0x40010000
+#define SWITCH_BASE_ADDR (AXI_GPIO_1_BASE_ADDR + 8)
+#define SW_REG (unsigned *)(SWITCH_BASE_ADDR)
+
 #define DHB1_GPIO_BASEADDR   0x44A10000  // Direction + Enable (GPIO)
 #define MOTORFB_BASEADDR     0x44A20000  // Hall effect feedback (optional)
 #define PWM_BASEADDR         0x44A30000  // PWM duty cycle + enable
@@ -86,7 +90,7 @@ void motor_stop() {
 // duty = 0–65535 range typically
 // FIXED: No longer turns off motors immediately
 // ---------------------------------------------------------------------------
-void motor_set_speed(int duty, int duration) {
+void motor_set_speed(int duty) {
    
     xil_printf("beginning of set speed\n");
 
@@ -97,18 +101,15 @@ void motor_set_speed(int duty, int duration) {
     DHB1_PWM_EN = 0;
     motor_enable();
 
-    busy_wait_ms(duration);
-
     xil_printf("end of set speed\n");
-
 }
 
 // ---------------------------------------------------------------------------
 // EASY MOTOR PULSE: turn on → wait → turn off
 // ---------------------------------------------------------------------------
-void motor_pulse_forward(int duty, int duration) {
+void motor_pulse_forward(int duty) {
     motor_forward();
-    motor_set_speed(duty, duration);
+    motor_set_speed(duty);
     motor_stop();
 }
 
@@ -119,33 +120,55 @@ int main() {
     xil_printf("ArtyBot starting...\n");
 
     xil_printf("Init Pmod Ls1");
-    XGpio_Initialize(&ls1_gpio, LS1_BASEADDR);
+    XGpio_Initialize(&ls1_gpio, 0x40020000);
+    XGpio_SetDataDirection(&ls1_gpio, 1, 0xFF);   // channel 1 = inputs
 
-    
+    unsigned *switchesData = SW_REG;
+    unsigned *switchesTri = SW_REG + 1;
+    *switchesTri = 0xF;
+
 
     // -------------------------------------------------------------
     // MOTOR TESTS
     // -------------------------------------------------------------
-    xil_printf("Pulse forward...\n");
-    motor_pulse_forward(400, 1000);  // 0.5 seconds
+    // xil_printf("Pulse forward...\n");
+    // motor_pulse_forward(400, 1000);  // 0.5 seconds
 
-    xil_printf("Pulse backward...\n");
-    motor_backward();
-    motor_set_speed(400, 1000);
-    busy_wait_ms(50);
-    motor_stop();
+    // xil_printf("Pulse backward...\n");
+    // motor_backward();
+    // motor_set_speed(400, 1000);
+    // busy_wait_ms(50);
+    // motor_stop();
 
-    xil_printf("Pulse right turn...\n");
-    motor_right();
-    motor_set_speed(400, 1000);
-    busy_wait_ms(50);
-    motor_stop();
+    // xil_printf("Pulse right turn...\n");
+    // motor_right();
+    // motor_set_speed(400, 1000);
+    // busy_wait_ms(50);
+    // motor_stop();
 
-    xil_printf("Pulse left turn...\n");
-    motor_left();
-    motor_set_speed(400, 1000);
-    busy_wait_ms(50);
-    motor_stop();
+    // xil_printf("Pulse left turn...\n");
+    // motor_left();
+    // motor_set_speed(400, 1000);
+    // busy_wait_ms(50);
+    // motor_stop();
+
+    while(1){
+        unsigned switchVal = *switchesData;
+        if(switchVal & 0x1){
+            if(XGpio_DiscreteRead(&ls1_gpio, 1)){
+                motor_pulse_forward(400);  // 0.5 seconds
+            } else if (!(XGpio_DiscreteRead(&ls1_gpio, 1) & 0x1)) {
+                motor_right();
+                motor_set_speed(400);
+                motor_stop();
+            } else if (!(XGpio_DiscreteRead(&ls1_gpio, 1) & 0x2)) {
+                motor_left();
+                motor_set_speed(400);
+                motor_stop();
+            }
+        }
+
+    }
 
 
     return 0;
