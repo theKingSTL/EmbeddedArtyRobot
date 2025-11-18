@@ -92,16 +92,11 @@ void motor_stop() {
 // ---------------------------------------------------------------------------
 void motor_set_speed(int duty) {
    
-    xil_printf("beginning of set speed\n");
-
     DHB1_PWM_M1 = duty;
     DHB1_PWM_M2 = duty;
-    xil_printf("end of duty\n");
 
     DHB1_PWM_EN = 0;
     motor_enable();
-
-    xil_printf("end of set speed\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -109,6 +104,18 @@ void motor_set_speed(int duty) {
 // ---------------------------------------------------------------------------
 void motor_pulse_forward(int duty) {
     motor_forward();
+    motor_set_speed(duty);
+    motor_stop();
+}
+
+void motor_pulse_right(int duty) {
+    motor_right();
+    motor_set_speed(duty);
+    motor_stop();
+}
+
+void motor_pulse_left(int duty) {
+    motor_left();
     motor_set_speed(duty);
     motor_stop();
 }
@@ -132,42 +139,45 @@ int main() {
     // MOTOR TESTS
     // -------------------------------------------------------------
     // xil_printf("Pulse forward...\n");
-    // motor_pulse_forward(400, 1000);  // 0.5 seconds
+    // motor_pulse_forward(400);  // 0.5 seconds
 
     // xil_printf("Pulse backward...\n");
     // motor_backward();
-    // motor_set_speed(400, 1000);
-    // busy_wait_ms(50);
+    // motor_set_speed(400);
+    // busy_wait_ms(500);
     // motor_stop();
 
     // xil_printf("Pulse right turn...\n");
     // motor_right();
-    // motor_set_speed(400, 1000);
-    // busy_wait_ms(50);
+    // motor_set_speed(400);
+    // busy_wait_ms(500);
     // motor_stop();
 
     // xil_printf("Pulse left turn...\n");
     // motor_left();
-    // motor_set_speed(400, 1000);
-    // busy_wait_ms(50);
+    // motor_set_speed(400);
+    // busy_wait_ms(500);
     // motor_stop();
 
     while(1){
         unsigned switchVal = *switchesData;
         if(switchVal & 0x1){
-            if(XGpio_DiscreteRead(&ls1_gpio, 1)){
-                motor_pulse_forward(400);  // 0.5 seconds
+            if(!(XGpio_DiscreteRead(&ls1_gpio, 1) & 0x2 || (XGpio_DiscreteRead(&ls1_gpio, 1) & 0x1))){
+                motor_forward();
+                motor_set_speed(400);
+                // xil_printf("Moving forward\n");
             } else if (!(XGpio_DiscreteRead(&ls1_gpio, 1) & 0x1)) {
                 motor_right();
                 motor_set_speed(400);
-                motor_stop();
+                // xil_printf("Moving right\n");
             } else if (!(XGpio_DiscreteRead(&ls1_gpio, 1) & 0x2)) {
                 motor_left();
                 motor_set_speed(400);
+                // xil_printf("Moving left\n");
+            } else if ((XGpio_DiscreteRead(&ls1_gpio, 1) & 0x2 || (XGpio_DiscreteRead(&ls1_gpio, 1) & 0x1))) {
                 motor_stop();
             }
         }
-
     }
 
 
