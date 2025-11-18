@@ -15,6 +15,8 @@
 #define PWM_BASEADDR         0x44A30000  // PWM duty cycle + enable
 #define LS1_BASEADDR         0x40020000  // From xparameters.h
 
+#define MAXONAR_BASEADDR 0x44A40000
+
 // ---------------------------------------------------------------------------
 // DHB1 REGISTER MAP
 // ---------------------------------------------------------------------------
@@ -27,6 +29,9 @@
 #define DHB1_PWM_M1   (*(volatile u32*)(PWM_BASEADDR + 0x00))
 #define DHB1_PWM_M2   (*(volatile u32*)(PWM_BASEADDR + 0x04))
 #define DHB1_PWM_EN   (*(volatile u32*)(PWM_BASEADDR + 0x08))
+
+#define MAXONAR_A  (*(volatile u32*)(MAXONAR_BASEADDR + 0x00))
+#define MAXONAR_B (*(volatile u32*)(MAXONAR_BASEADDR + 0x04))
 
 // ---------------------------------------------------------------------------
 // LINE SENSOR GPIO (AXI GPIO with dual channels)
@@ -161,7 +166,13 @@ int main() {
 
     while(1){
         unsigned switchVal = *switchesData;
-        if(switchVal & 0x1){
+
+        u32 sonarA = MAXONAR_A;
+        u32 sonarB = MAXONAR_B;
+
+        xil_printf("Sonar A: %u   Sonar B: %u\n", sonarA, sonarB);
+
+        if((switchVal & 0x1) && (sonarB > 100000)){
             if(!(XGpio_DiscreteRead(&ls1_gpio, 1) & 0x2 || (XGpio_DiscreteRead(&ls1_gpio, 1) & 0x1))){
                 motor_forward();
                 motor_set_speed(400);
@@ -177,6 +188,8 @@ int main() {
             } else if ((XGpio_DiscreteRead(&ls1_gpio, 1) & 0x2 || (XGpio_DiscreteRead(&ls1_gpio, 1) & 0x1))) {
                 motor_stop();
             }
+        } else {
+            motor_stop();
         }
     }
 
